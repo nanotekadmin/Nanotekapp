@@ -1,0 +1,50 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: nanotek_app
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Unzip project
+        working-directory: .
+        run: unzip -o nanotek_app.zip
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: zulu
+          java-version: '17'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.35.x
+          cache: true
+
+      - name: Generate Android project
+        run: flutter create --platforms=android --org lk.nanotek --project-name nanotek_app .
+
+      - name: Apply Nanotek Android settings
+        run: python3 tool/patch_android.py
+
+      - name: Get packages
+        run: flutter pub get
+
+      - name: App icon
+        run: dart run flutter_launcher_icons
+
+      - name: Build APK
+        run: flutter build apk --release
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nanotek-app-apk
+          path: nanotek_app/build/app/outputs/flutter-apk/app-release.apk
